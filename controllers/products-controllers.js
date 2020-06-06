@@ -60,7 +60,7 @@ const getProductsByUserId = async (req, res, next) => {
     userWithProducts = await User.findById(userId).populate("products");
   } catch (err) {
     const error = new HttpError(
-      "Fetching products failed, please try again later.",
+      "Fetching products failed, please try again later or try to login.",
       500
     );
     return next(error);

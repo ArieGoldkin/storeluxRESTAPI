@@ -8,7 +8,9 @@ const userSchema = new Schema({
   lastName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, minlength: 6 },
-  image: { type: String, required: true },
+  address: { type: String },
+  phone: { type: String },
+  image: { type: String },
 
   // the array means that the user can have more than one product
   products: [{ type: mongoose.Types.ObjectId, required: true, ref: "Product" }],

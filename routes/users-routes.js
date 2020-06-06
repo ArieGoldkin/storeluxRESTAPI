@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.get("/", usersColntoller.getUsers);
 
+router.get("/:uid", usersColntoller.getUserById);
+
 router.post(
   "/signup",
   [
@@ -16,6 +18,16 @@ router.post(
     check("password").isLength({ min: 6 }),
   ],
   usersColntoller.signup
+);
+
+router.patch(
+  "/:uid",
+  [
+    check("firstName").not().isEmpty(),
+    check("lastName").not().isEmpty(),
+    check("email").normalizeEmail().isEmail(),
+  ],
+  usersColntoller.updateUserInfo
 );
 
 router.post("/login", usersColntoller.login);
