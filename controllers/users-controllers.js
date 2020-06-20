@@ -49,12 +49,13 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
+  const defaultImagePath = "uploads\\images\\user.png";
+
   const createdUser = new User({
     firstName,
     lastName,
     email,
-    image:
-      "https://scontent.fhfa1-1.fna.fbcdn.net/v/t1.0-9/72625106_10217506072857603_5676642048736755712_n.jpg?_nc_cat=106&_nc_sid=85a577&_nc_ohc=ZA70ad49oR8AX-yLR4A&_nc_ht=scontent.fhfa1-1.fna&oh=c8f3de619e13ec738ce3e34af63da2c1&oe=5EEDB0ED",
+    image: defaultImagePath,
     password,
     products: [],
   });
@@ -132,8 +133,9 @@ const updateUserInfo = async (req, res, next) => {
   if (!errors.isEmpty()) {
     throw new HttpError("Invalid inputs passed, please check your data.", 422);
   }
-  const { firstName, lastName, email, address, phone } = req.body;
+  const { firstName, lastName, email, address, image, phone } = req.body;
 
+  const defaultImagePath = "uploads\\images\\user.png";
   const userId = req.params.uid;
   let user;
 
@@ -152,6 +154,19 @@ const updateUserInfo = async (req, res, next) => {
   user.email = email;
   user.address = address;
   user.phone = phone;
+  try {
+    if (image != defaultImagePath) {
+      user.image = req.file.path;
+    } else {
+      user.image = defaultImagePath;
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not change image.",
+      500
+    );
+    return next(error);
+  }
 
   try {
     await user.save();

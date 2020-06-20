@@ -2,6 +2,7 @@ const express = require("express");
 const { check } = require("express-validator");
 
 const usersColntoller = require("../controllers/users-controllers");
+const fileUpload = require("../middleware/file-upload");
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.post(
 
 router.patch(
   "/:uid",
+  fileUpload.single("image"),
   [
     check("firstName").not().isEmpty(),
     check("lastName").not().isEmpty(),
