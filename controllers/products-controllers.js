@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 
@@ -100,8 +102,7 @@ const createProduct = async (req, res, next) => {
     units,
     description,
     creator,
-    image:
-      "https://cdn.azrieli.com/Images/2cf3011b-8d3d-429d-8ea9-04e5b9bd47de/Normal/c1f68a04.jpg",
+    image: req.file.path,
   });
 
   let user;
@@ -201,6 +202,8 @@ const deleteProduct = async (req, res, next) => {
     return next(error);
   }
 
+  const imagePath = product.image;
+
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
@@ -215,6 +218,11 @@ const deleteProduct = async (req, res, next) => {
     );
     return next(error);
   }
+
+  // deleting the image from data base when deleting a product
+  fs.unlink(imagePath, (err) => {
+    console.log(err);
+  });
 
   res.status(200).json({ message: "Deleted product." });
 };

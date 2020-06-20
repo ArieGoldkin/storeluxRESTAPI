@@ -88,7 +88,7 @@ const login = async (req, res, next) => {
   if (!existingUser || existingUser.password != password) {
     const error = new HttpError(
       "Invalid email or password, could not login.",
-      401
+      401 
     );
     return next(error);
   }
