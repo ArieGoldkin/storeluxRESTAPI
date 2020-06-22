@@ -149,7 +149,7 @@ const updateProduct = async (req, res, next) => {
     throw new HttpError("Invalid inputs passed, please check your data.", 422);
   }
 
-  const { title, category, price, units, description } = req.body;
+  const { title, category, price, units, image, description } = req.body;
   const productId = req.params.pid;
 
   let product;
@@ -163,11 +163,26 @@ const updateProduct = async (req, res, next) => {
     return next(error);
   }
 
+  const imagePath = image; // current image path
+
   product.title = title;
   product.category = category;
   product.price = price;
   product.units = units;
   product.description = description;
+  try {
+    if (product.image != imagePath) {
+      product.image = req.file.path;
+    } else {
+      product.image = image;
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not change image.",
+      500
+    );
+    return next(error);
+  }
 
   try {
     await product.save();
