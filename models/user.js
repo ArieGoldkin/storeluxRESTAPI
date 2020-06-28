@@ -11,6 +11,7 @@ const userSchema = new Schema({
   address: { type: String },
   phone: { type: String },
   image: { type: String },
+  cartId: [{ type: mongoose.Types.ObjectId, ref: "Cart" }],
 
   // the array means that the user can have more than one product
   products: [{ type: mongoose.Types.ObjectId, required: true, ref: "Product" }],

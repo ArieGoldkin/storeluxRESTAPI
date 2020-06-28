@@ -15,6 +15,8 @@ router.get("/user/:uid", productsControllers.getProductsByUserId);
 
 router.use(checkAuth);
 
+router.get("/:uid/shoppingcart", productsControllers.getCartByUserId);
+
 router.post(
   "/",
   fileUpload.single("image"),
@@ -40,6 +42,10 @@ router.patch(
   ],
   productsControllers.updateProduct
 );
+
+router.post("/:uid/shoppingcart", productsControllers.addProductToCart);
+
+router.delete("/:uid/shoppingcart", productsControllers.deleteProductFromCart);
 
 router.delete("/:pid", productsControllers.deleteProduct);
 

@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
+const Cart = require("../models/cart");
 
 const getProducts = async (req, res, next) => {
   let products;
@@ -84,6 +85,174 @@ const getProductsByUserId = async (req, res, next) => {
   });
 };
 
+const addProductToCart = async (req, res, next) => {
+  let user;
+  try {
+    user = await User.findById(req.userData.userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Creating product faild, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  const { productId, units } = req.body;
+  let product;
+  try {
+    product = await Product.findById(productId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find product.",
+      500
+    );
+    return next(error);
+  }
+
+  let { cartId } = user.cartId;
+  let createdCart;
+  let cart;
+  try {
+    cart = await Cart.findOne({ cartId });
+    if (!cart) {
+      createdCart = new Cart({
+        creator: req.userData.userId,
+        products: [{ productId, units }],
+      });
+
+      console.log(createdCart);
+    } else {
+      let id = productId;
+      let itemIndex = cart.products.findIndex((p) => p.productId == id);
+      if (itemIndex > -1) {
+        //product exists in the cart, update the quantity
+        let productItem = cart.products[itemIndex];
+        productItem.units = units;
+        console.log(productItem);
+        cart.products[itemIndex] = productItem;
+      } else {
+        //product does not exists in cart, add new item
+        cart.products.push({ productId, units });
+      }
+      await cart.save();
+      return res.status(201).json({ cart: cart.toObject({ getters: true }) });
+    }
+  } catch (err) {
+    const error = new HttpError(
+      "Creating or update product cart faild, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await createdCart.save({ session: sess });
+    user.cartId.push(createdCart);
+    await user.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Adding product to cart faild, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  res.status(201).json({ cart: createdCart });
+};
+
+const getCartByUserId = async (req, res, next) => {
+  const userId = req.userData.userId;
+  console.log(userId);
+
+  let userWithCart;
+  let userCart;
+  try {
+    userWithCart = await User.findById(userId);
+    userCart = await Cart.findById(userWithCart.cartId);
+    console.log(userWithCart.cartId);
+    console.log(userCart);
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching cart failed, please try again later or try to login.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!userCart || userCart.length === 0) {
+    const error = new HttpError(
+      "Could not find a cart for the provided user id.",
+      404
+    );
+    return next(error);
+  }
+  res.json({
+    cart: userCart.products.map((product) =>
+      product.toObject({ getters: true })
+    ),
+  });
+};
+
+const deleteProductFromCart = async (req, res, next) => {
+  const { productId } = req.body;
+  const userId = req.userData.userId;
+
+  let product;
+  let user;
+  let userCart;
+  try {
+    user = await User.findById(userId);
+    userCart = await Cart.findById(user.cartId);
+
+    product = userCart.products.find((p) => p.productId == productId);
+    console.log(product);
+
+    console.log(userCart);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not delete product from cart.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!product) {
+    const error = new HttpError("Could not find product for this id.", 404);
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await product.remove({
+      session: sess,
+    });
+    userCart.products.pull(product);
+    await userCart.save({
+      session: sess,
+    });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not delete product.",
+      500
+    );
+    return next(error);
+  }
+
+  res.status(200).json({
+    message: "Deleted product.",
+  });
+};
+
 const createProduct = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -94,21 +263,21 @@ const createProduct = async (req, res, next) => {
     return next(error);
   }
 
-  const { title, category, price, units, description, creator } = req.body;
+  const { title, category, price, units, description } = req.body;
   const createdProduct = new Product({
     title,
     category,
     price,
     units,
     description,
-    creator,
+    creator: req.userData.userId,
     image: req.file.path,
   });
 
   let user;
 
   try {
-    user = await User.findById(creator);
+    user = await User.findById(req.userData.userId);
   } catch (err) {
     const error = new HttpError(
       "Creating product faild, please try again",
@@ -163,6 +332,15 @@ const updateProduct = async (req, res, next) => {
     return next(error);
   }
 
+  // checking if the user that wants to update product is the correct user that is logged in.
+  if (product.creator.toString() !== req.userData.userId) {
+    const error = new HttpError(
+      "Yoy are not allowed to edit this product.",
+      401
+    );
+    return next(error);
+  }
+
   const imagePath = image; // current image path
 
   product.title = title;
@@ -171,7 +349,9 @@ const updateProduct = async (req, res, next) => {
   product.units = units;
   product.description = description;
   try {
-    if (product.image != imagePath) {
+    if (product.image !== imagePath) {
+      // deleting the prev image from data base when update a product if update image require
+      fs.unlinkSync(product.image);
       product.image = req.file.path;
     } else {
       product.image = image;
@@ -194,7 +374,9 @@ const updateProduct = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ product: product.toObject({ getters: true }) });
+  res.status(200).json({
+    product: product.toObject({ getters: true }),
+  });
 };
 
 const deleteProduct = async (req, res, next) => {
@@ -213,7 +395,16 @@ const deleteProduct = async (req, res, next) => {
   }
 
   if (!product) {
-    const error = new HttpError("Could not find place for this id.", 404);
+    const error = new HttpError("Could not find product for this id.", 404);
+    return next(error);
+  }
+
+  // checking if the user that wants to delete current product is the correct user that is logged in.
+  if (product.creator.id !== req.userData.userId) {
+    const error = new HttpError(
+      "Yoy are not allowed to delete this product.",
+      401
+    );
     return next(error);
   }
 
@@ -222,9 +413,13 @@ const deleteProduct = async (req, res, next) => {
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await product.remove({ session: sess });
+    await product.remove({
+      session: sess,
+    });
     product.creator.products.pull(product); // pulls the product id from the products user array
-    await product.creator.save({ session: sess });
+    await product.creator.save({
+      session: sess,
+    });
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
@@ -239,7 +434,9 @@ const deleteProduct = async (req, res, next) => {
     console.log(err);
   });
 
-  res.status(200).json({ message: "Deleted product." });
+  res.status(200).json({
+    message: "Deleted product.",
+  });
 };
 
 exports.getProducts = getProducts;
@@ -248,3 +445,6 @@ exports.getProductsByUserId = getProductsByUserId;
 exports.createProduct = createProduct;
 exports.updateProduct = updateProduct;
 exports.deleteProduct = deleteProduct;
+exports.addProductToCart = addProductToCart;
+exports.getCartByUserId = getCartByUserId;
+exports.deleteProductFromCart = deleteProductFromCart;

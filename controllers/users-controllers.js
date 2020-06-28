@@ -114,7 +114,7 @@ const login = async (req, res, next) => {
   if (!existingUser) {
     const error = new HttpError(
       "Invalid email or password, could not login.",
-      401
+      403
     );
     return next(error);
   }
@@ -134,7 +134,7 @@ const login = async (req, res, next) => {
   if (!isValidPassword) {
     const error = new HttpError(
       "Invalid email or password, could not login.",
-      401
+      403
     );
     return next(error);
   }
@@ -215,7 +215,7 @@ const updateUserInfo = async (req, res, next) => {
   user.address = address;
   user.phone = phone;
   try {
-    if (user.image != imagePath) {
+    if (user.image !== imagePath) {
       user.image = req.file.path;
     } else {
       user.image = image;
