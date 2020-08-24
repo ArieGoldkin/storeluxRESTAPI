@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
     }
     const decodedToken = jwt.verify(
       token,
-      "supersecret_string_gold_dont_share"
+      "supersecret_string_gold_dont_share" 
     );
     req.userData = { userId: decodedToken.userId };
     next();

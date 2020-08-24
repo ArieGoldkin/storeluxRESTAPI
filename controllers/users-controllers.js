@@ -89,9 +89,11 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
-  res
-    .status(201)
-    .json({ userId: createdUser.id, email: createdUser.email, token: token });
+  res.status(201).json({
+    userId: createdUser.id,
+    email: createdUser.email,
+    token: token,
+  });
 };
 
 const login = async (req, res, next) => {
@@ -192,7 +194,7 @@ const updateUserInfo = async (req, res, next) => {
   if (!errors.isEmpty()) {
     throw new HttpError("Invalid inputs passed, please check your data.", 422);
   }
-  const { firstName, lastName, email, address, image, phone } = req.body;
+  const { email, firstName, lastName, address, image, phone } = req.body;
 
   const userId = req.params.uid;
   let user;

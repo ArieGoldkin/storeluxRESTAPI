@@ -12,7 +12,13 @@ const cartSchema = new Schema(
     products: [
       {
         productId: { type: mongoose.Types.ObjectId, ref: "product" },
+        quantity: { type: Number },
+        title: { type: String },
+        category: { type: String },
+        price: { type: Number },
         units: { type: Number },
+        description: { type: String },
+        image: { type: String },
       },
     ],
     active: {

@@ -7,6 +7,7 @@ const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
 const Cart = require("../models/cart");
+const { compareSync } = require("bcryptjs");
 
 const getProducts = async (req, res, next) => {
   let products;
@@ -86,9 +87,23 @@ const getProductsByUserId = async (req, res, next) => {
 };
 
 const addProductToCart = async (req, res, next) => {
+  const {
+    productId,
+    quantity,
+    title,
+    category,
+    price,
+    units,
+    description,
+    image,
+  } = req.body;
+  // console.log(req.body);
+  // console.log(req.userData);
+
   let user;
   try {
     user = await User.findById(req.userData.userId);
+    console.log(user);
   } catch (err) {
     const error = new HttpError(
       "Creating product faild, please try again",
@@ -102,7 +117,6 @@ const addProductToCart = async (req, res, next) => {
     return next(error);
   }
 
-  const { productId, units } = req.body;
   let product;
   try {
     product = await Product.findById(productId);
@@ -114,40 +128,69 @@ const addProductToCart = async (req, res, next) => {
     return next(error);
   }
 
-  let { cartId } = user.cartId;
+  let cartId = user.cartId;
   let createdCart;
   let cart;
-  try {
-    cart = await Cart.findOne({ cartId });
-    if (!cart) {
-      createdCart = new Cart({
-        creator: req.userData.userId,
-        products: [{ productId, units }],
-      });
 
-      console.log(createdCart);
-    } else {
+  // checking if the cartId object is empty and there is no cart
+  if (Object.keys(cartId).length == 0) {
+    createdCart = new Cart({
+      creator: req.userData.userId,
+      products: [
+        {
+          productId,
+          quantity,
+          title,
+          category,
+          price,
+          units,
+          description,
+          image,
+        },
+      ],
+    });
+    console.log(createdCart);
+  } else {
+    try {
+      cart = await Cart.findById(cartId);
+
       let id = productId;
       let itemIndex = cart.products.findIndex((p) => p.productId == id);
       if (itemIndex > -1) {
         //product exists in the cart, update the quantity
         let productItem = cart.products[itemIndex];
+        productItem.quantity = quantity;
+        productItem.title = title;
+        productItem.category = category;
+        productItem.price = price;
         productItem.units = units;
-        console.log(productItem);
+        productItem.description = description;
+        productItem.image = image;
+        // console.log(productItem);
         cart.products[itemIndex] = productItem;
       } else {
         //product does not exists in cart, add new item
-        cart.products.push({ productId, units });
+        cart.products.push({
+          productId,
+          quantity,
+          title,
+          category,
+          price,
+          units,
+          description,
+          image,
+        });
       }
+
       await cart.save();
       return res.status(201).json({ cart: cart.toObject({ getters: true }) });
+    } catch (err) {
+      const error = new HttpError(
+        "Creating or update product cart faild, please try again",
+        500
+      );
+      return next(error);
     }
-  } catch (err) {
-    const error = new HttpError(
-      "Creating or update product cart faild, please try again",
-      500
-    );
-    return next(error);
   }
 
   try {
@@ -194,6 +237,49 @@ const getCartByUserId = async (req, res, next) => {
     );
     return next(error);
   }
+
+  res.json({
+    cart: userCart.products.map((product) =>
+      product.toObject({ getters: true })
+    ),
+  });
+};
+
+const updateProductInCart = async (req, res, next) => {
+  const userId = req.userData.userId;
+  const { productId, quantity } = req.body;
+
+  let user;
+  let product;
+  let userCart;
+  try {
+    user = await User.findById(userId);
+    userCart = await Cart.findById(user.cartId);
+    product = userCart.products.find((p) => p.id == productId);
+    console.log(product);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find product.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!product) {
+    const error = new HttpError("Could not find product for this id.", 404);
+    return next(error);
+  }
+
+  product.quantity = quantity;
+  try {
+    await userCart.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Somthing went wrong, could not update product.",
+      500
+    );
+    return next(error);
+  }
   res.json({
     cart: userCart.products.map((product) =>
       product.toObject({ getters: true })
@@ -202,7 +288,9 @@ const getCartByUserId = async (req, res, next) => {
 };
 
 const deleteProductFromCart = async (req, res, next) => {
-  const { productId } = req.body;
+  console.log(req.body);
+  // const { productId } = req.body;
+  const productId = req.params.pcid;
   const userId = req.userData.userId;
 
   let product;
@@ -212,7 +300,7 @@ const deleteProductFromCart = async (req, res, next) => {
     user = await User.findById(userId);
     userCart = await Cart.findById(user.cartId);
 
-    product = userCart.products.find((p) => p.productId == productId);
+    product = userCart.products.find((p) => p.id == productId);
     console.log(product);
 
     console.log(userCart);
@@ -448,3 +536,4 @@ exports.deleteProduct = deleteProduct;
 exports.addProductToCart = addProductToCart;
 exports.getCartByUserId = getCartByUserId;
 exports.deleteProductFromCart = deleteProductFromCart;
+exports.updateProductInCart = updateProductInCart;
