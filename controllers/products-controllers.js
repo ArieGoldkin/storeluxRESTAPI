@@ -97,13 +97,10 @@ const addProductToCart = async (req, res, next) => {
     description,
     image,
   } = req.body;
-  // console.log(req.body);
-  // console.log(req.userData);
 
   let user;
   try {
     user = await User.findById(req.userData.userId);
-    console.log(user);
   } catch (err) {
     const error = new HttpError(
       "Creating product faild, please try again",
@@ -149,7 +146,6 @@ const addProductToCart = async (req, res, next) => {
         },
       ],
     });
-    console.log(createdCart);
   } else {
     try {
       cart = await Cart.findById(cartId);
@@ -166,7 +162,6 @@ const addProductToCart = async (req, res, next) => {
         productItem.units = units;
         productItem.description = description;
         productItem.image = image;
-        // console.log(productItem);
         cart.products[itemIndex] = productItem;
       } else {
         //product does not exists in cart, add new item
@@ -213,15 +208,35 @@ const addProductToCart = async (req, res, next) => {
 
 const getCartByUserId = async (req, res, next) => {
   const userId = req.userData.userId;
-  console.log(userId);
 
   let userWithCart;
   let userCart;
+  let createdCart;
   try {
     userWithCart = await User.findById(userId);
+
+    // if there is no cart then create an empty cart
+    if (Object.keys(userWithCart.cartId).length == 0) {
+      createdCart = new Cart({
+        creator: userId,
+        products: [],
+      });
+      try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await createdCart.save({ session: sess });
+        userWithCart.cartId.push(createdCart);
+        await userWithCart.save({ session: sess });
+        await sess.commitTransaction();
+      } catch (err) {
+        const error = new HttpError(
+          "Adding product to cart faild, please try again",
+          500
+        );
+        return next(error);
+      }
+    }
     userCart = await Cart.findById(userWithCart.cartId);
-    console.log(userWithCart.cartId);
-    console.log(userCart);
   } catch (err) {
     const error = new HttpError(
       "Fetching cart failed, please try again later or try to login.",
@@ -256,7 +271,6 @@ const updateProductInCart = async (req, res, next) => {
     user = await User.findById(userId);
     userCart = await Cart.findById(user.cartId);
     product = userCart.products.find((p) => p.id == productId);
-    console.log(product);
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not find product.",
@@ -288,7 +302,6 @@ const updateProductInCart = async (req, res, next) => {
 };
 
 const deleteProductFromCart = async (req, res, next) => {
-  console.log(req.body);
   // const { productId } = req.body;
   const productId = req.params.pcid;
   const userId = req.userData.userId;
@@ -301,9 +314,6 @@ const deleteProductFromCart = async (req, res, next) => {
     userCart = await Cart.findById(user.cartId);
 
     product = userCart.products.find((p) => p.id == productId);
-    console.log(product);
-
-    console.log(userCart);
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete product from cart.",
@@ -378,8 +388,6 @@ const createProduct = async (req, res, next) => {
     const error = new HttpError("Could not find user for provided id", 404);
     return next(error);
   }
-
-  console.log(user);
 
   try {
     const sess = await mongoose.startSession();
