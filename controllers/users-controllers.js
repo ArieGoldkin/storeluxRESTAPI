@@ -1,6 +1,17 @@
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const sendgridTransport = require("nodemailer-sendgrid-transport");
+
+const transporter = nodemailer.createTransport(
+  sendgridTransport({
+    auth: {
+      api_key:
+        "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",
+    },
+  })
+);
 
 const HttpError = require("../models/http-errors");
 const User = require("../models/user");
@@ -88,12 +99,22 @@ const signup = async (req, res, next) => {
     const error = new HttpError("Signing up failed, please try again.", 500);
     return next(error);
   }
-
   res.status(201).json({
     userId: createdUser.id,
     email: createdUser.email,
     token: token,
   });
+
+  return transporter
+    .sendMail({
+      to: email,
+      from: "ariegoldkin@protonmail.com",
+      subject: "Signup succeeded!",
+      html: "<h1>You successfully signed up!, wellcome!</h1>",
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 const login = async (req, res, next) => {
