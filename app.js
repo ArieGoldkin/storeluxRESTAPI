@@ -8,6 +8,8 @@ const mongoose = require("mongoose");
 const productsRoutes = require("./routes/products-routes");
 const usersRoutes = require("./routes/users-routes");
 const categoriesRoutes = require("./routes/categories-routes");
+const ordersRoutes = require("./routes/orders-routes");
+
 const HttpError = require("./models/http-errors");
 
 const allowedOrigins = "http://localhost:3000";
@@ -35,6 +37,7 @@ app.use((req, res, next) => {
 app.use("/api/products", productsRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/orders", ordersRoutes);
 
 app.use((req, res, next) => {
   // if route not found throws an error
