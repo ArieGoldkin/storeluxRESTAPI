@@ -15,6 +15,7 @@ const userSchema = new Schema({
 
   // the array means that the user can have more than one product
   products: [{ type: mongoose.Types.ObjectId, required: true, ref: "Product" }],
+  orders: [{ type: mongoose.Types.ObjectId, required: true, ref: "Order" }],
 });
 
 userSchema.plugin(uniqueValidator);
