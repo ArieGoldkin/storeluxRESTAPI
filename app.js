@@ -12,7 +12,7 @@ const ordersRoutes = require("./routes/orders-routes");
 
 const HttpError = require("./models/http-errors");
 
-const allowedOrigins = "http://localhost:3000";
+const allowedOrigins = "http://localhost:5000";
 
 const app = express();
 
@@ -22,7 +22,7 @@ app.use("/uploads/images", express.static(path.join("uploads", "images")));
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigins);
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
