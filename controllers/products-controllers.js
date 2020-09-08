@@ -360,8 +360,9 @@ const createProduct = async (req, res, next) => {
     );
     return next(error);
   }
-
+  console.log(req.body);
   const { title, category, price, units, description } = req.body;
+
   const createdProduct = new Product({
     title,
     category,
