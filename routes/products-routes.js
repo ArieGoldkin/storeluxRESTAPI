@@ -15,11 +15,6 @@ router.get("/user/:uid", productsControllers.getProductsByUserId);
 
 router.use(checkAuth);
 
-router.get("/:uid/shoppingcart", productsControllers.getCartByUserId);
-
-router.post("/:uid/shoppingcart", productsControllers.addProductToCart);
-
-router.patch("/:uid/shoppingcart", productsControllers.updateProductInCart);
 
 router.post(
   "/",
@@ -46,8 +41,6 @@ router.patch(
   ],
   productsControllers.updateProduct
 );
-
-router.delete("/:uid/shoppingcart/:pcid", productsControllers.deleteProductFromCart);
 
 router.delete("/:pid", productsControllers.deleteProduct);
 

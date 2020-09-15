@@ -8,11 +8,12 @@ const mongoose = require("mongoose");
 const productsRoutes = require("./routes/products-routes");
 const usersRoutes = require("./routes/users-routes");
 const categoriesRoutes = require("./routes/categories-routes");
+const shoppingCartRoutes = require("./routes/shoppingCart-routes");
 const ordersRoutes = require("./routes/orders-routes");
 
 const HttpError = require("./models/http-errors");
 
-const allowedOrigins = "https://storelux.web.app";
+const allowedOrigins = "http://localhost:3000";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use((req, res, next) => {
 app.use("/api/products", productsRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/shoppingcart", shoppingCartRoutes);
 app.use("/api/orders", ordersRoutes);
 
 app.use((req, res, next) => {

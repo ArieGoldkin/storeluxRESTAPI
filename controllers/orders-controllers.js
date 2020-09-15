@@ -41,9 +41,8 @@ const getOrdersByUserId = async (req, res, next) => {
 
 const addNewOrder = async (req, res, next) => {
   const userId = req.userData.userId;
-  const { product, firstName, email, address, phone, orderSummary } = req.body;
+  const { items, firstName, email, address, phone, orderSummary } = req.body;
 
-  console.log(req.body);
   let user;
   try {
     user = await User.findById(userId);
@@ -62,22 +61,21 @@ const addNewOrder = async (req, res, next) => {
 
   const createdOrder = new Order({
     creator: userId,
-    products: [product],
+    products: [],
     firstName,
     email,
     shippmentAddress: address,
     contactPhone: phone,
     orderSummary,
   });
-  console.log(createdOrder);
 
-  //   for (var key in req.body) {
-  //     if (req.body.hasOwnProperty(key)) {
-  //       item = req.body[key];
-  //       console.log(item);
-  //       createdOrder.products.push(item);
-  //     }
-  //   }
+  for (var key in items) {
+    if (items.hasOwnProperty(key)) {
+      item = items[key];
+      createdOrder.products.push(item);
+    }
+  }
+  // console.log(createdOrder);
 
   try {
     const sess = await mongoose.startSession();
