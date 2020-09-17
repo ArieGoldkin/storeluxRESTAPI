@@ -4,7 +4,7 @@ const fs = require("fs");
 const mongoose = require("mongoose");
 
 const HttpError = require("../models/http-errors");
-// const Product = require("../models/product");
+const Product = require("../models/product");
 const User = require("../models/user");
 // const Cart = require("../models/cart");
 const Order = require("../models/order");
@@ -44,6 +44,8 @@ const addNewOrder = async (req, res, next) => {
   const { items, firstName, email, address, phone, orderSummary } = req.body;
 
   let user;
+  let product;
+
   try {
     user = await User.findById(userId);
   } catch (err) {
@@ -51,7 +53,7 @@ const addNewOrder = async (req, res, next) => {
     return next(error);
   }
 
-  if (!user.address && !user.phone) {
+  if (!address && !phone) {
     const error = new HttpError(
       "Could not find user shippment information",
       404
@@ -72,10 +74,32 @@ const addNewOrder = async (req, res, next) => {
   for (var key in items) {
     if (items.hasOwnProperty(key)) {
       item = items[key];
+      let itemId = item.productId;
+
+      try {
+        product = await Product.findById(itemId);
+        console.log(item.quantity);
+        product.units -= item.quantity;
+        console.log(product);
+        try {
+          await product.save();
+        } catch (err) {
+          const error = new HttpError(
+            "Somthing went wrong, could not update product.",
+            500
+          );
+          return next(error);
+        }
+      } catch (err) {
+        const error = new HttpError(
+          "Could not find product, please try again.",
+          500
+        );
+        return next(error);
+      }
       createdOrder.products.push(item);
     }
   }
-  // console.log(createdOrder);
 
   try {
     const sess = await mongoose.startSession();

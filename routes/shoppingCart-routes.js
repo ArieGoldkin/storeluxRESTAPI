@@ -16,6 +16,7 @@ router.post("/:uid/", shoppingCartControllers.addProductToCart);
 router.patch("/:uid/", shoppingCartControllers.updateProductInCart);
 
 router.delete("/:uid/summary", shoppingCartControllers.deleteProductsFromCart);
+
 router.delete("/:uid/:pcid", shoppingCartControllers.deleteProductFromCart);
 
 module.exports = router;

@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const sendgridTransport = require("nodemailer-sendgrid-transport");
+const adminSccess = require("../middleware/adminInfo");
 
 const transporter = nodemailer.createTransport(
   sendgridTransport({
@@ -120,6 +121,7 @@ const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   let existingUser;
+  let admin;
 
   try {
     existingUser = await User.findOne({
@@ -173,10 +175,13 @@ const login = async (req, res, next) => {
     return next(error);
   }
 
+  existingUser.id === adminSccess.adminId ? (admin = true) : (admin = false);
+
   res.json({
     userId: existingUser.id,
     email: existingUser.email,
     token: token,
+    admin: admin,
   });
 };
 
