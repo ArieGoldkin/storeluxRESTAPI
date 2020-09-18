@@ -13,7 +13,7 @@ const ordersRoutes = require("./routes/orders-routes");
 
 const HttpError = require("./models/http-errors");
 
-const allowedOrigins = "http://localhost:3000";
+const allowedOrigins = "http://localhost:5000";
 
 const app = express();
 
