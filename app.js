@@ -13,7 +13,10 @@ const ordersRoutes = require("./routes/orders-routes");
 
 const HttpError = require("./models/http-errors");
 
-const allowedOrigins = "http://localhost:5000";
+const allowedOrigins = "https://storelux.web.app";
+
+// http://localhost:3000 link for development
+// https://storelux.web.app) link for deployment
 
 const app = express();
 
