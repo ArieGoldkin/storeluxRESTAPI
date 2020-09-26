@@ -10,10 +10,12 @@ const usersRoutes = require("./routes/users-routes");
 const categoriesRoutes = require("./routes/categories-routes");
 const shoppingCartRoutes = require("./routes/shoppingCart-routes");
 const ordersRoutes = require("./routes/orders-routes");
+const adminRoutes = require("./routes/admin-routes");
 
 const HttpError = require("./models/http-errors");
+// const { request } = require("http");
 
-const allowedOrigins = "https://storelux.web.app";
+const allowedOrigins = "http://localhost:3000";
 
 // http://localhost:3000 link for development
 // https://storelux.web.app) link for deployment
@@ -43,6 +45,7 @@ app.use("/api/users", usersRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/shoppingcart", shoppingCartRoutes);
 app.use("/api/orders", ordersRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((req, res, next) => {
   // if route not found throws an error
