@@ -7,9 +7,9 @@ const checkAuth = require("../middleware/check-auth");
 
 const router = express.Router();
 
-router.use(checkAuth);
-
 router.get("/globaldata", adminControllers.getGlobalData);
+
+router.use(checkAuth);
 
 router.post("/allorders", adminControllers.getAllOrders);
 
