@@ -11,6 +11,8 @@ router.use(checkAuth);
 
 router.get("/globaldata", adminControllers.getGlobalData);
 
+router.post("/allorders", adminControllers.getAllOrders);
+
 router.patch(
   "/updaterate",
   check("vatRate").not().isEmpty(),
