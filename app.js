@@ -13,9 +13,8 @@ const ordersRoutes = require("./routes/orders-routes");
 const adminRoutes = require("./routes/admin-routes");
 
 const HttpError = require("./models/http-errors");
-// const { request } = require("http");
 
-const allowedOrigins = "http://localhost:5000";
+const allowedOrigins = "https://storelux.web.app";
 
 // http://localhost:3000 link for development
 // https://storelux.web.app) link for deployment
