@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use(checkAuth);
 
-router.post("/globaldata", adminControllers.getGlobalData);
+router.get("/globaldata", adminControllers.getGlobalData);
 
 router.post("/allorders", adminControllers.getAllOrders);
 
