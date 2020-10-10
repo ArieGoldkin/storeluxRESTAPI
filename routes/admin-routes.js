@@ -11,7 +11,19 @@ router.use(checkAuth);
 
 router.get("/globaldata", adminControllers.getGlobalData);
 
-router.post("/allorders", adminControllers.getAllOrders);
+router.post("/ordersbydate", adminControllers.getOrdersByDate);
+
+router.post("/ordersByUserName", adminControllers.getOrdersByUserName);
+
+router.post("/allproducts", adminControllers.getAllProducts);
+
+router.post(
+  "/addcategory",
+  [check("name").not().isEmpty()],
+  adminControllers.createCategory
+);
+
+router.patch("/statuschange", adminControllers.productStatusChange);
 
 router.patch(
   "/updaterate",

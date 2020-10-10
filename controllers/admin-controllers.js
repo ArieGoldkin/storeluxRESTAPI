@@ -2,20 +2,23 @@ const fs = require("fs");
 
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
+const strConvert = require("../middleware/helperFunctions");
 
 const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
 const Order = require("../models/order");
 const GlobalData = require("../models/globalData");
+const Category = require("../models/category");
 
+// GET GLOBAL DATA WHEN LOGIN
 const getGlobalData = async (req, res, next) => {
   let globalData;
   try {
     globalData = await GlobalData.findOne({});
   } catch (err) {
     const error = new HttpError(
-      "Fetching global data faild, please try again later.",
+      "Fetching global data failed, please try again later.",
       500
     );
     return next(error);
@@ -36,7 +39,86 @@ const getGlobalData = async (req, res, next) => {
   // });
 };
 
-const getAllOrders = async (req, res, next) => {
+// GET ALL PRODUCTS
+const getAllProducts = async (req, res, next) => {
+  const { adminId } = req.body;
+
+  let products;
+  let adminUser;
+  let isAdmin;
+
+  try {
+    adminUser = await User.findById(adminId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      500
+    );
+    return next(error);
+  }
+
+  if (!adminUser) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      404
+    );
+    return next(error);
+  }
+
+  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+
+  if (isAdmin) {
+    try {
+      products = await Product.find({});
+    } catch (err) {
+      const error = new HttpError("Could not fine products", 500);
+      return next(error);
+    }
+    if (!products) {
+      return next(new HttpError("Could not find products.", 404));
+    }
+  } else {
+    const error = new HttpError("User is not admin can't do this action.", 401);
+    return next(error);
+  }
+  res.json({
+    products: products.map((product) => product.toObject({ getters: true })),
+  });
+};
+
+// GET PRODUCT BY ID
+// const getProductById = async (req, res, next) => {
+//   const productId = req.params.pid;
+
+//   let product;
+//   try {
+//     product = await Product.findById(productId);
+//   } catch (err) {
+//     const error = new HttpError(
+//       "Something went wrong, could not find a product.",
+//       500
+//     );
+//     return next(error);
+//   }
+
+//   if (!product) {
+//     const error = new HttpError(
+//       "Could not find a product for the provided id.",
+//       404
+//     );
+//     return next(error);
+//   }
+
+//   //getters adds the lost getter of the toObject method to the id property
+//   res.json({
+//     product: product.toObject({
+//       getters: true,
+//     }),
+//   });
+// };
+
+// GET ALL ORDERS IN ADMIN ORDERS PAGE
+const getOrdersByDate = async (req, res, next) => {
   const { adminId, fromDate, toDate } = req.body;
 
   let orders;
@@ -85,6 +167,71 @@ const getAllOrders = async (req, res, next) => {
   });
 };
 
+//GET ORDERS BY USER NAME
+const getOrdersByUserName = async (req, res, next) => {
+  const { adminId, userName } = req.body;
+
+  let orders;
+  let user;
+  let adminUser;
+  let isAdmin;
+  let newOrdersArray = [];
+
+  try {
+    adminUser = await User.findById(adminId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      500
+    );
+    return next(error);
+  }
+
+  if (!adminUser) {
+    const error = new HttpError(
+      "Could not find admin user for provided id, user not allowed to this route.",
+      401
+    );
+    return next(error);
+  }
+
+  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+
+  if (isAdmin) {
+    try {
+      user = await User.find({
+        $or: [
+          { firstName: { $regex: userName, $options: "i" } },
+          { lastName: { $regex: userName, $options: "i" } },
+        ],
+      });
+    } catch (err) {
+      const error = new HttpError("No users found.", 500);
+      return next(error);
+    }
+
+    for (let key in user) {
+      oneItem = user[key];
+      let userId = oneItem._id;
+      try {
+        orders = await Order.find({ creator: userId });
+        newOrdersArray.push(...orders);
+      } catch (err) {
+        const error = new HttpError("Could not fine orders", 500);
+        return next(error);
+      }
+    }
+  } else {
+    const error = new HttpError("User is not admin can't do this action.", 401);
+    return next(error);
+  }
+
+  res.json({
+    orders: newOrdersArray.map((order) => order.toObject({ getters: true })),
+  });
+};
+
+// UPDATE RATE CHANGE
 const updateRate = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -102,7 +249,7 @@ const updateRate = async (req, res, next) => {
     console.log(adminUser.id);
   } catch (err) {
     const error = new HttpError(
-      "Somthing went wrong, check connection and try again.",
+      "Something went wrong, check connection and try again.",
       500
     );
     return next(error);
@@ -138,7 +285,7 @@ const updateRate = async (req, res, next) => {
       await globalData.save();
     } catch (err) {
       const error = new HttpError(
-        "Somthing went wrong, could not update global vat rate.",
+        "Something went wrong, could not update global vat rate.",
         500
       );
       return next(error);
@@ -153,6 +300,7 @@ const updateRate = async (req, res, next) => {
   });
 };
 
+// DELETE REQUESTED PRODUCTS
 const deleteProducts = async (req, res, next) => {
   const { products, adminId } = req.body;
 
@@ -163,7 +311,7 @@ const deleteProducts = async (req, res, next) => {
     adminUser = await User.findById(adminId);
   } catch (err) {
     const error = new HttpError(
-      "Somthing went wrong, check connection and try again.",
+      "Something went wrong, check connection and try again.",
       500
     );
     return next(error);
@@ -228,7 +376,124 @@ const deleteProducts = async (req, res, next) => {
   });
 };
 
+// CREATING NEW CATEGORY
+const createCategory = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new HttpError(
+      "Invalid inputs passed, please check your data.",
+      422
+    );
+    return next(error);
+  }
+
+  let category;
+  const { name } = req.body;
+
+  let newNameStr = strConvert.capitalize(name);
+  console.log(newNameStr);
+
+  try {
+    category = await Category.find({ name: newNameStr });
+    console.log(category);
+  } catch (e) {
+    const error = new HttpError(
+      "Something went wrong, could not find category.",
+      500
+    );
+    return next(error);
+  }
+
+  if (category.length > 0) {
+    const error = new HttpError(
+      "Creating category failed, category already exists.",
+      422
+    );
+    return next(error);
+  }
+
+  const createdCategory = new Category({
+    name: newNameStr,
+  });
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    createdCategory.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Creating category failed, please try again.",
+      500
+    );
+    return next(error);
+  }
+  res.status(201).json({ category: createdCategory });
+};
+
+//CHANGE PRODUCT STATUS
+const productStatusChange = async (req, res, next) => {
+  const { adminId, productId } = req.body;
+
+  let adminUser;
+  let isAdmin;
+  let product;
+
+  try {
+    adminUser = await User.findById(adminId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      500
+    );
+    return next(error);
+  }
+
+  if (!adminUser) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      404
+    );
+    return next(error);
+  }
+
+  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+
+  if (isAdmin) {
+    try {
+      product = await Product.findById(productId);
+    } catch (err) {
+      const error = new HttpError(
+        "Something went wrong, could not find product.",
+        500
+      );
+      return next(error);
+    }
+    product.active = !product.active;
+
+    try {
+      await product.save();
+    } catch (err) {
+      const error = new HttpError(
+        "Something went wrong, could not update product.",
+        500
+      );
+      return next(error);
+    }
+  } else {
+    const error = new HttpError("User is not admin can't do this action.", 401);
+    return next(error);
+  }
+  res.status(200).json({
+    product: product.toObject({ getters: true }),
+  });
+};
+
 exports.getGlobalData = getGlobalData;
-exports.getAllOrders = getAllOrders;
+exports.getOrdersByDate = getOrdersByDate;
+exports.getOrdersByUserName = getOrdersByUserName;
 exports.updateRate = updateRate;
 exports.deleteProducts = deleteProducts;
+exports.createCategory = createCategory;
+exports.getAllProducts = getAllProducts;
+exports.productStatusChange = productStatusChange;
