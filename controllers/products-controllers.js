@@ -6,13 +6,12 @@ const mongoose = require("mongoose");
 const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
-// const Cart = require("../models/cart");
-// const { compareSync } = require("bcryptjs");
 
+// GET ALL PRODUCTS
 const getProducts = async (req, res, next) => {
   let products;
   try {
-    products = await Product.find({});
+    products = await Product.find({ active: true });
   } catch (err) {
     const error = new HttpError("Could not fine products", 500);
     return next(error);
@@ -25,6 +24,41 @@ const getProducts = async (req, res, next) => {
   });
 };
 
+//FIND PRODUCTS BY TITLE
+const findProductsByTitle = async (req, res, next) => {
+  const { title } = req.body;
+  let products;
+
+  if (title) {
+    try {
+      products = await Product.find({
+        title: { $regex: title, $options: "i" },
+      });
+    } catch (err) {
+      const error = new HttpError("Could not fine products", 500);
+      return next(error);
+    }
+  } else {
+    try {
+      products = await Product.find({ active: true });
+    } catch (err) {
+      const error = new HttpError(
+        "Something happened, Could not fine products",
+        500
+      );
+      return next(error);
+    }
+  }
+
+  if (!products) {
+    return res.json({ products });
+  }
+  res.json({
+    products: products.map((product) => product.toObject({ getters: true })),
+  });
+};
+
+// GET PRODUCT BY ID
 const getProductById = async (req, res, next) => {
   const productId = req.params.pid;
 
@@ -47,7 +81,7 @@ const getProductById = async (req, res, next) => {
     return next(error);
   }
 
-  //getters adds the lost getter of the toObject method to the id proprety
+  //getters adds the lost getter of the toObject method to the id property
   res.json({
     product: product.toObject({
       getters: true,
@@ -55,10 +89,10 @@ const getProductById = async (req, res, next) => {
   });
 };
 
+// GET ALL USER PRODUCTS BY USER ID
 const getProductsByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
-  // let products;
   let userWithProducts;
   try {
     userWithProducts = await User.findById(userId).populate("products");
@@ -86,6 +120,7 @@ const getProductsByUserId = async (req, res, next) => {
   });
 };
 
+// CREATE NEW PRODUCT
 const createProduct = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -114,7 +149,7 @@ const createProduct = async (req, res, next) => {
     user = await User.findById(req.userData.userId);
   } catch (err) {
     const error = new HttpError(
-      "Creating product faild, please try again",
+      "Creating product failed, please try again",
       500
     );
     return next(error);
@@ -132,7 +167,7 @@ const createProduct = async (req, res, next) => {
     user.products.push(createdProduct);
     await user.save({ session: sess });
     await sess.commitTransaction(); // on this point everything was saved in the DB
-    // if something went wrong everything will roll back automaticly by mongoDB
+    // if something went wrong everything will roll back automatically by mongoDB
   } catch (err) {
     const error = new HttpError(
       "Creating product failed, please try again.",
@@ -141,9 +176,10 @@ const createProduct = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(201).json({ product: createdProduct });
+  res.status(201).json({ product: createdProduct.toObject({ getters: true }) });
 };
 
+// UPDATE PRODUCT
 const updateProduct = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -200,7 +236,7 @@ const updateProduct = async (req, res, next) => {
     await product.save();
   } catch (err) {
     const error = new HttpError(
-      "Somthing went wrong, could not update product.",
+      "Something went wrong, could not update product.",
       500
     );
     return next(error);
@@ -211,6 +247,7 @@ const updateProduct = async (req, res, next) => {
   });
 };
 
+// DELETE PRODUCT
 const deleteProduct = async (req, res, next) => {
   const productId = req.params.pid;
 
@@ -241,13 +278,11 @@ const deleteProduct = async (req, res, next) => {
   }
 
   const imagePath = product.image;
-
+  product.active = false;
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await product.remove({
-      session: sess,
-    });
+    await product.updateOne({ active: false }, { session: sess });
     product.creator.products.pull(product); // pulls the product id from the products user array
     await product.creator.save({
       session: sess,
@@ -260,11 +295,29 @@ const deleteProduct = async (req, res, next) => {
     );
     return next(error);
   }
+  // try {
+  //   const sess = await mongoose.startSession();
+  //   sess.startTransaction();
+  //   await product.remove({
+  //     session: sess,
+  //   });
+  //   product.creator.products.pull(product); // pulls the product id from the products user array
+  //   await product.creator.save({
+  //     session: sess,
+  //   });
+  //   await sess.commitTransaction();
+  // } catch (err) {
+  //   const error = new HttpError(
+  //     "Something went wrong, could not delete product.",
+  //     500
+  //   );
+  //   return next(error);
+  // }
 
   // deleting the image from data base when deleting a product
-  fs.unlink(imagePath, (err) => {
-    console.log(err);
-  });
+  // fs.unlink(imagePath, (err) => {
+  //   console.log(err);
+  // });
 
   res.status(200).json({
     message: "Deleted product.",
@@ -272,6 +325,7 @@ const deleteProduct = async (req, res, next) => {
 };
 
 exports.getProducts = getProducts;
+exports.findProductsByTitle = findProductsByTitle;
 exports.getProductById = getProductById;
 exports.getProductsByUserId = getProductsByUserId;
 exports.createProduct = createProduct;

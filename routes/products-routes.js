@@ -9,12 +9,13 @@ const router = express.Router();
 
 router.get("/", productsControllers.getProducts);
 
+router.post("/searchByTitle", productsControllers.findProductsByTitle);
+
 router.get("/:pid", productsControllers.getProductById);
 
 router.get("/user/:uid", productsControllers.getProductsByUserId);
 
 router.use(checkAuth);
-
 
 router.post(
   "/",
