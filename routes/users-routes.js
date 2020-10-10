@@ -1,14 +1,22 @@
 const express = require("express");
 const { check } = require("express-validator");
 
-const usersColntoller = require("../controllers/users-controllers");
+const UserController = require("../controllers/users-controllers");
 const fileUpload = require("../middleware/file-upload");
 
 const router = express.Router();
 
-router.get("/", usersColntoller.getUsers);
+router.get("/", UserController.getUsers);
 
-router.get("/:uid", usersColntoller.getUserById);
+router.get("/:uid", UserController.getUserById);
+
+router.post("/resetPassword", UserController.resetPassword);
+
+router.post(
+  "/updatePassword",
+  check("password").isLength({ min: 6 }),
+  UserController.updatePassword
+);
 
 router.post(
   "/signup",
@@ -18,7 +26,7 @@ router.post(
     check("email").normalizeEmail().isEmail(), //normalizeEmail checking if it is an email
     check("password").isLength({ min: 6 }),
   ],
-  usersColntoller.signup
+  UserController.signup
 );
 
 router.patch(
@@ -29,9 +37,9 @@ router.patch(
     check("lastName").not().isEmpty(),
     check("email").normalizeEmail().isEmail(),
   ],
-  usersColntoller.updateUserInfo
+  UserController.updateUserInfo
 );
 
-router.post("/login", usersColntoller.login);
+router.post("/login", UserController.login);
 
 module.exports = router;

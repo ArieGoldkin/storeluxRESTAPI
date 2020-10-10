@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -16,13 +18,14 @@ const transporter = nodemailer.createTransport(
 const HttpError = require("../models/http-errors");
 const User = require("../models/user");
 
+// GET ALL USERS
 const getUsers = async (req, res, next) => {
   let users;
   try {
     users = await User.find({}, "-password");
   } catch (err) {
     const error = new HttpError(
-      "Fetching users faild, please try again later.",
+      "Fetching users failed, please try again later.",
       500
     );
     return next(error);
@@ -31,6 +34,7 @@ const getUsers = async (req, res, next) => {
   res.json({ users: users.map((user) => user.toObject({ getters: true })) });
 };
 
+//SIGNUP
 const signup = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -56,7 +60,7 @@ const signup = async (req, res, next) => {
 
   if (existingUser) {
     const error = new HttpError(
-      "User exists already, please login insted.",
+      "User exists already, please login instead.",
       422
     );
     return next(error);
@@ -99,24 +103,156 @@ const signup = async (req, res, next) => {
     const error = new HttpError("Signing up failed, please try again.", 500);
     return next(error);
   }
+
   res.status(201).json({
     userId: createdUser.id,
     email: createdUser.email,
     token: token,
   });
 
-  return transporter
-    .sendMail({
+  try {
+    const mail = await transporter.sendMail({
       to: email,
-      from: "ariegoldkin@protonmail.com",
+      from: "storeluxonlineshop@gmail.com",
       subject: "Signup succeeded!",
-      html: "<h1>You successfully signed up!, wellcome!</h1>",
-    })
-    .catch((err) => {
-      console.log(err);
+      html: "<h1>You successfully signed up!, welcome!</h1>",
     });
+    console.log(email);
+    console.log(mail);
+  } catch (err) {
+    const error = new HttpError("Something went wrong, please try again.", 500);
+    return next(error);
+  }
 };
 
+//FORGOT PASSWORD RECOVERY EMAIL SEND
+const resetPassword = async (req, res, next) => {
+  const { email } = req.body;
+
+  let existingUser;
+
+  try {
+    existingUser = await User.findOne({ email });
+  } catch (e) {
+    const error = new HttpError(
+      "Something went wrong, please try again..",
+      500
+    );
+    return next(error);
+  }
+
+  if (!existingUser) {
+    const error = new HttpError("Could not find User.", 403);
+    return next(error);
+  }
+
+  crypto.randomBytes(32, (err, buffer) => {
+    if (err) {
+      const error = new HttpError(
+        "Something went wrong, please try again.",
+        500
+      );
+      return next(error);
+    }
+    const token = buffer.toString("hex");
+    existingUser.resetToken = token;
+    existingUser.resetTokenExpiration = Date.now() + 3600000;
+  });
+
+  try {
+    await existingUser.save();
+  } catch (e) {
+    const error = new HttpError(
+      "Reset password failed, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  try {
+    const mail = await transporter.sendMail({
+      to: email,
+      from: "storeluxonlineshop@gmail.com",
+      subject: "Password reset",
+      html: `
+          <p>Hey!!! one more set to reset your password :)</p>
+          <p>Just Click this <a href="http://localhost:3000/resetPassword/${existingUser.resetToken}">link</a> to set a new password</p>
+      `,
+    });
+  } catch (err) {
+    const error = new HttpError("Something went wrong, please try again.", 500);
+    return next(error);
+  }
+  res.status(201).json({
+    email: email,
+  });
+};
+
+// UPDATE NEW USER PASSWORD
+const updatePassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new HttpError(
+      "Invalid inputs passed, please check your data.",
+      422
+    );
+    return next(error);
+  }
+  const { resetToken, password } = req.body;
+  let user;
+
+  try {
+    user = await User.findOne({
+      resetToken: resetToken,
+      resetTokenExpiration: { $gt: Date.now() },
+    });
+  } catch (e) {
+    const error = new HttpError(
+      "Update password failed, Could not find user, please try again later",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError(
+      "User was not found, Update password failed, please try again.",
+      422
+    );
+    return next(error);
+  }
+
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not create encrypt password, please try again",
+      500
+    );
+    return next(error);
+  }
+
+  user.password = hashedPassword;
+  user.resetToken = undefined;
+  user.resetTokenExpiration = undefined;
+
+  try {
+    await user.save();
+  } catch (err) {
+    const error = new HttpError(
+      "Could not save user information, please try again.",
+      500
+    );
+    return next(error);
+  }
+
+  res.status(201).json({
+    message: "Success",
+  });
+};
+
+//LOGIN
 const login = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -185,6 +321,7 @@ const login = async (req, res, next) => {
   });
 };
 
+//GET USER BY ID
 const getUserById = async (req, res, next) => {
   const userId = req.params.uid;
 
@@ -214,6 +351,7 @@ const getUserById = async (req, res, next) => {
   });
 };
 
+// UPDATE USER PERSONAL INFORMATION
 const updateUserInfo = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -259,7 +397,7 @@ const updateUserInfo = async (req, res, next) => {
     await user.save();
   } catch (err) {
     const error = new HttpError(
-      "Somthing went wrong, could not update user.",
+      "Something went wrong, could not update user.",
       500
     );
     return next(error);
@@ -273,3 +411,5 @@ exports.getUserById = getUserById;
 exports.updateUserInfo = updateUserInfo;
 exports.signup = signup;
 exports.login = login;
+exports.resetPassword = resetPassword;
+exports.updatePassword = updatePassword;
