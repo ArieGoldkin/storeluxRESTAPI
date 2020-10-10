@@ -95,7 +95,10 @@ const getProductsByUserId = async (req, res, next) => {
 
   let userWithProducts;
   try {
-    userWithProducts = await User.findById(userId).populate("products");
+    userWithProducts = await User.findById(userId).populate({
+      path: "products",
+      match: { active: true },
+    });
   } catch (err) {
     const error = new HttpError(
       "Fetching products failed, please try again later or try to login.",
@@ -283,7 +286,7 @@ const deleteProduct = async (req, res, next) => {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await product.updateOne({ active: false }, { session: sess });
-    product.creator.products.pull(product); // pulls the product id from the products user array
+    // product.creator.products.pull(product); // pulls the product id from the products user array
     await product.creator.save({
       session: sess,
     });
