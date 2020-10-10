@@ -8,6 +8,7 @@ const Product = require("../models/product");
 const User = require("../models/user");
 const Cart = require("../models/cart");
 
+// ADD PRODUCTS TO CART
 const addProductToCart = async (req, res, next) => {
   const {
     productId,
@@ -25,7 +26,7 @@ const addProductToCart = async (req, res, next) => {
     user = await User.findById(req.userData.userId);
   } catch (err) {
     const error = new HttpError(
-      "Creating product faild, please try again",
+      "Creating product failed, please try again",
       500
     );
     return next(error);
@@ -98,12 +99,19 @@ const addProductToCart = async (req, res, next) => {
           image,
         });
       }
-
       await cart.save();
-      return res.status(201).json({ cart: cart.toObject({ getters: true }) });
+      if (itemIndex === -1) {
+        return res
+          .status(201)
+          .json({ items: cart.products.toObject({ getters: true }) });
+      } else {
+        return res.status(201).json({
+          items: cart.products[itemIndex].toObject({ getters: true }),
+        });
+      }
     } catch (err) {
       const error = new HttpError(
-        "Creating or update product cart faild, please try again",
+        "Creating or update product cart failed, please try again",
         500
       );
       return next(error);
@@ -119,7 +127,7 @@ const addProductToCart = async (req, res, next) => {
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
-      "Adding product to cart faild, please try again",
+      "Adding product to cart failed, please try again",
       500
     );
     return next(error);
@@ -128,6 +136,7 @@ const addProductToCart = async (req, res, next) => {
   res.status(201).json({ cart: createdCart });
 };
 
+// GET CART BY USER ID
 const getCartByUserId = async (req, res, next) => {
   const userId = req.userData.userId;
 
@@ -152,7 +161,7 @@ const getCartByUserId = async (req, res, next) => {
         await sess.commitTransaction();
       } catch (err) {
         const error = new HttpError(
-          "Adding product to cart faild, please try again",
+          "Adding product to cart failed, please try again",
           500
         );
         return next(error);
@@ -182,6 +191,7 @@ const getCartByUserId = async (req, res, next) => {
   });
 };
 
+// UPDATE PRODUCTS IN CART
 const updateProductInCart = async (req, res, next) => {
   const userId = req.userData.userId;
   const { productId, quantity } = req.body;
@@ -211,7 +221,7 @@ const updateProductInCart = async (req, res, next) => {
     await userCart.save();
   } catch (err) {
     const error = new HttpError(
-      "Somthing went wrong, could not update product.",
+      "Something went wrong, could not update product.",
       500
     );
     return next(error);
