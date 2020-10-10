@@ -18,7 +18,7 @@ const getOrdersByUserId = async (req, res, next) => {
     userWithOrders = await User.findById(userId).populate("orders");
   } catch (err) {
     const error = new HttpError(
-      "Fetchimg orders failed, please try again.",
+      "Fetching orders failed, please try again.",
       500
     );
     return next(error);
@@ -55,7 +55,7 @@ const addNewOrder = async (req, res, next) => {
 
   if (!address && !phone) {
     const error = new HttpError(
-      "Could not find user shippment information",
+      "Could not find user shipment information",
       404
     );
     return next(error);
@@ -85,7 +85,7 @@ const addNewOrder = async (req, res, next) => {
           await product.save();
         } catch (err) {
           const error = new HttpError(
-            "Somthing went wrong, could not update product.",
+            "Something went wrong, could not update product.",
             500
           );
           return next(error);
@@ -108,7 +108,7 @@ const addNewOrder = async (req, res, next) => {
     user.orders.push(createdOrder);
     await user.save({ session: sess });
     await sess.commitTransaction(); // on this point everything was saved in the DB
-    // if something went wrong everything will roll back automaticly by mongoDB
+    // if something went wrong everything will roll back automatically by mongoDB
   } catch (err) {
     const error = new HttpError(
       "Creating order failed, please try again.",
