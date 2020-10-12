@@ -14,7 +14,7 @@ const adminRoutes = require("./routes/admin-routes");
 
 const HttpError = require("./models/http-errors");
 
-const allowedOrigins = "http://localhost:3000";
+const allowedOrigins = "https://storelux.web.app";
 
 //don't forget to change link in user controller email sending
 // http://localhost:3000 link for development

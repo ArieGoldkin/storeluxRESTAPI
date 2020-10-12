@@ -32,7 +32,7 @@ const findProductsByTitle = async (req, res, next) => {
   if (title) {
     try {
       products = await Product.find({
-        title: { $regex: title, $options: "i" },
+        $and: [{ title: { $regex: title, $options: "i" } }, { active: true }],
       });
     } catch (err) {
       const error = new HttpError("Could not fine products", 500);
@@ -286,7 +286,7 @@ const deleteProduct = async (req, res, next) => {
     const sess = await mongoose.startSession();
     sess.startTransaction();
     await product.updateOne({ active: false }, { session: sess });
-    // product.creator.products.pull(product); // pulls the product id from the products user array
+    product.creator.products.pull(product); // pulls the product id from the products user array
     await product.creator.save({
       session: sess,
     });

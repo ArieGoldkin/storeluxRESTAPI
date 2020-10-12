@@ -176,7 +176,7 @@ const resetPassword = async (req, res, next) => {
       subject: "Password reset",
       html: `
           <p>Hey!!! one more set to reset your password :)</p>
-          <p>Just Click this <a href="http://localhost:3000/resetPassword/${existingUser.resetToken}">link</a> to set a new password</p>
+          <p>Just Click this <a href="https://storelux.web.app/resetPassword/${existingUser.resetToken}">link</a> to set a new password</p>
       `,
     });
   } catch (err) {

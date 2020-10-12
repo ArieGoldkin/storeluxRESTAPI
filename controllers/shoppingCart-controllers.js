@@ -21,6 +21,8 @@ const addProductToCart = async (req, res, next) => {
     image,
   } = req.body;
 
+  // console.log(req.body);
+
   let user;
   try {
     user = await User.findById(req.userData.userId);
@@ -72,12 +74,14 @@ const addProductToCart = async (req, res, next) => {
   } else {
     try {
       cart = await Cart.findById(cartId);
-
+      console.log(cart);
       let id = productId;
       let itemIndex = cart.products.findIndex((p) => p.productId == id);
+      console.log(itemIndex);
       if (itemIndex > -1) {
         //product exists in the cart, update the quantity
         let productItem = cart.products[itemIndex];
+        // console.log(productItem);
         productItem.quantity = quantity;
         productItem.title = title;
         productItem.category = category;
@@ -105,8 +109,9 @@ const addProductToCart = async (req, res, next) => {
           .status(201)
           .json({ items: cart.products.toObject({ getters: true }) });
       } else {
+        console.log(cart.products[itemIndex]);
         return res.status(201).json({
-          items: cart.products[itemIndex].toObject({ getters: true }),
+          items: cart.products.toObject({ getters: true }),
         });
       }
     } catch (err) {

@@ -3,7 +3,9 @@
     "DB_USER": "ArieGold",
     "DB_PASSWORD": "ArieGold5378581",
     "DB_NAME": "storeluxDB",
-    "MAIL_API_KEY": "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",
-    "JWT_KEY": "supersecret_string_gold_dont_share"
+    "MAIL_API_KEY": "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",
+    "JWT_KEY": "supersecret_string_gold_dont_share",
+    "ADMIN_ID": "5f4e3d4e4b5be605d08e907b",
+    "ADMIN_EMAIL": "ariegoldkin88@gmail.com"
   }
 }

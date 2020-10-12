@@ -10,6 +10,7 @@ const User = require("../models/user");
 const Order = require("../models/order");
 const GlobalData = require("../models/globalData");
 const Category = require("../models/category");
+const AdminAccess = require("../middleware/adminInfo");
 
 // GET GLOBAL DATA WHEN LOGIN
 const getGlobalData = async (req, res, next) => {
@@ -65,7 +66,7 @@ const getAllProducts = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   if (isAdmin) {
     try {
@@ -143,7 +144,7 @@ const getOrdersByDate = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   if (isAdmin) {
     try {
@@ -195,28 +196,38 @@ const getOrdersByUserName = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   if (isAdmin) {
-    try {
-      user = await User.find({
-        $or: [
-          { firstName: { $regex: userName, $options: "i" } },
-          { lastName: { $regex: userName, $options: "i" } },
-        ],
-      });
-    } catch (err) {
-      const error = new HttpError("No users found.", 500);
-      return next(error);
-    }
-
-    for (let key in user) {
-      oneItem = user[key];
-      let userId = oneItem._id;
+    if (userName) {
       try {
-        orders = await Order.find({ creator: userId });
-        newOrdersArray.push(...orders);
+        user = await User.find({
+          $or: [
+            { firstName: { $regex: userName, $options: "i" } },
+            { lastName: { $regex: userName, $options: "i" } },
+          ],
+        });
       } catch (err) {
+        const error = new HttpError("No users found.", 500);
+        return next(error);
+      }
+
+      for (let key in user) {
+        oneItem = user[key];
+        let userId = oneItem._id;
+        try {
+          orders = await Order.find({ creator: userId });
+          newOrdersArray.push(...orders);
+        } catch (err) {
+          const error = new HttpError("Could not fine orders", 500);
+          return next(error);
+        }
+      }
+    } else {
+      try {
+        orders = await Order.find({});
+        newOrdersArray.push(...orders);
+      } catch (e) {
         const error = new HttpError("Could not fine orders", 500);
         return next(error);
       }
@@ -246,7 +257,6 @@ const updateRate = async (req, res, next) => {
 
   try {
     adminUser = await User.findById(adminId);
-    console.log(adminUser.id);
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, check connection and try again.",
@@ -263,7 +273,7 @@ const updateRate = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   if (isAdmin) {
     try {
@@ -325,7 +335,7 @@ const deleteProducts = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   let product;
 
@@ -387,48 +397,73 @@ const createCategory = async (req, res, next) => {
     return next(error);
   }
 
+  const { name, adminId } = req.body;
   let category;
-  const { name } = req.body;
+  let adminUser;
+  let isAdmin;
 
   let newNameStr = strConvert.capitalize(name);
-  console.log(newNameStr);
 
   try {
-    category = await Category.find({ name: newNameStr });
-    console.log(category);
-  } catch (e) {
-    const error = new HttpError(
-      "Something went wrong, could not find category.",
-      500
-    );
-    return next(error);
-  }
-
-  if (category.length > 0) {
-    const error = new HttpError(
-      "Creating category failed, category already exists.",
-      422
-    );
-    return next(error);
-  }
-
-  const createdCategory = new Category({
-    name: newNameStr,
-  });
-
-  try {
-    const sess = await mongoose.startSession();
-    sess.startTransaction();
-    createdCategory.save({ session: sess });
-    await sess.commitTransaction();
+    adminUser = await User.findById(adminId);
   } catch (err) {
     const error = new HttpError(
-      "Creating category failed, please try again.",
+      "Something went wrong, check connection and try again.",
       500
     );
     return next(error);
   }
-  res.status(201).json({ category: createdCategory });
+
+  if (!adminUser) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      404
+    );
+    return next(error);
+  }
+
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
+
+  if (isAdmin) {
+    try {
+      category = await Category.find({ name: newNameStr });
+    } catch (e) {
+      const error = new HttpError(
+        "Something went wrong, could not find category.",
+        500
+      );
+      return next(error);
+    }
+
+    if (category.length > 0) {
+      const error = new HttpError(
+        "Creating category failed, category already exists.",
+        422
+      );
+      return next(error);
+    }
+
+    const createdCategory = new Category({
+      name: newNameStr,
+    });
+
+    try {
+      const sess = await mongoose.startSession();
+      sess.startTransaction();
+      createdCategory.save({ session: sess });
+      await sess.commitTransaction();
+    } catch (err) {
+      const error = new HttpError(
+        "Creating category failed, please try again.",
+        500
+      );
+      return next(error);
+    }
+    res.status(201).json({ category: createdCategory });
+  } else {
+    const error = new HttpError("User is not admin can't do this action.", 401);
+    return next(error);
+  }
 };
 
 //CHANGE PRODUCT STATUS
@@ -438,6 +473,7 @@ const productStatusChange = async (req, res, next) => {
   let adminUser;
   let isAdmin;
   let product;
+  let user;
 
   try {
     adminUser = await User.findById(adminId);
@@ -457,7 +493,7 @@ const productStatusChange = async (req, res, next) => {
     return next(error);
   }
 
-  adminUser.id === adminId ? (isAdmin = true) : (isAdmin = false);
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
 
   if (isAdmin) {
     try {
@@ -469,16 +505,56 @@ const productStatusChange = async (req, res, next) => {
       );
       return next(error);
     }
-    product.active = !product.active;
-
     try {
-      await product.save();
+      user = await User.findById(product.creator);
     } catch (err) {
       const error = new HttpError(
-        "Something went wrong, could not update product.",
+        "Creating product failed, please try again",
         500
       );
       return next(error);
+    }
+
+    if (!user) {
+      const error = new HttpError("Could not find user for provided id", 404);
+      return next(error);
+    }
+    if (product.active === true) {
+      product.active = false;
+      try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await product.save({
+          session: sess,
+        });
+        user.products.pull(product);
+        await user.save({ session: sess });
+        await sess.commitTransaction();
+      } catch (err) {
+        const error = new HttpError(
+          "Something went wrong, could not update product.",
+          500
+        );
+        return next(error);
+      }
+    } else {
+      product.active = true;
+      try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await product.save({
+          session: sess,
+        });
+        user.products.push(product);
+        await user.save({ session: sess });
+        await sess.commitTransaction();
+      } catch (err) {
+        const error = new HttpError(
+          "Something went wrong, could not update product.",
+          500
+        );
+        return next(error);
+      }
     }
   } else {
     const error = new HttpError("User is not admin can't do this action.", 401);
