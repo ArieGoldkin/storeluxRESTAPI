@@ -137,8 +137,9 @@ const addProductToCart = async (req, res, next) => {
     );
     return next(error);
   }
-
-  res.status(201).json({ cart: createdCart });
+  res.status(201).json({
+    items: createdCart.products.toObject({ getters: true }),
+  });
 };
 
 // GET CART BY USER ID
