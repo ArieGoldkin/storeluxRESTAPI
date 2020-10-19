@@ -11,6 +11,8 @@ router.use(checkAuth);
 
 router.get("/globaldata", adminControllers.getGlobalData);
 
+router.post("/getOrders", adminControllers.getOrders);
+
 router.post("/ordersbydate", adminControllers.getOrdersByDate);
 
 router.post("/ordersByUserName", adminControllers.getOrdersByUserName);

@@ -40,6 +40,50 @@ const getGlobalData = async (req, res, next) => {
   // });
 };
 
+//GET ALL ORDERS
+const getOrders = async (req, res, next) => {
+  const { adminId } = req.body;
+
+  let adminUser;
+  let isAdmin;
+  let orders;
+  try {
+    adminUser = await User.findById(adminId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      500
+    );
+    return next(error);
+  }
+
+  if (!adminUser) {
+    const error = new HttpError(
+      "Could not find admin user for provided id",
+      404
+    );
+    return next(error);
+  }
+
+  adminUser.id === AdminAccess.adminId ? (isAdmin = true) : (isAdmin = false);
+
+  if (isAdmin) {
+    try {
+      orders = await Order.find({});
+    } catch (e) {
+      const error = new HttpError("Could not fine orders", 500);
+      return next(error);
+    }
+  } else {
+    const error = new HttpError("User is not admin can't do this action.", 401);
+    return next(error);
+  }
+
+  res.json({
+    orders: orders.map((order) => order.toObject({ getters: true })),
+  });
+};
+
 // GET ALL PRODUCTS
 const getAllProducts = async (req, res, next) => {
   const { adminId } = req.body;
@@ -565,6 +609,7 @@ const productStatusChange = async (req, res, next) => {
   });
 };
 
+exports.getOrders = getOrders;
 exports.getGlobalData = getGlobalData;
 exports.getOrdersByDate = getOrdersByDate;
 exports.getOrdersByUserName = getOrdersByUserName;
