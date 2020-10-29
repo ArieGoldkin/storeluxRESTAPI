@@ -1,17 +1,15 @@
 const fs = require("fs");
-
-// const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 
 const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
 // const Cart = require("../models/cart");
+const Message = require("../models/message");
 const Order = require("../models/order");
 
 const getOrdersByUserId = async (req, res, next) => {
   const userId = req.userData.userId;
-  console.log(userId);
 
   let userWithOrders;
   try {
@@ -31,7 +29,6 @@ const getOrdersByUserId = async (req, res, next) => {
     );
     return next(error);
   }
-  console.log(userWithOrders);
   res.json({
     orders: userWithOrders.orders.map((order) =>
       order.toObject({ getters: true })
@@ -71,16 +68,17 @@ const addNewOrder = async (req, res, next) => {
     orderSummary,
   });
 
-  for (var key in items) {
+  for (const key in items) {
     if (items.hasOwnProperty(key)) {
       item = items[key];
       let itemId = item.productId;
 
       try {
         product = await Product.findById(itemId);
-        console.log(item.quantity);
         product.units -= item.quantity;
-        console.log(product);
+        product.sold_units += item.quantity;
+        
+        //need to create new message for user when items are below 5 in quantity
         try {
           await product.save();
         } catch (err) {
