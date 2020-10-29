@@ -3,6 +3,7 @@ const { check } = require("express-validator");
 
 const UserController = require("../controllers/users-controllers");
 const fileUpload = require("../middleware/file-upload");
+const checkAuth = require("../middleware/check-auth");
 
 const router = express.Router();
 
@@ -41,5 +42,15 @@ router.patch(
 );
 
 router.post("/login", UserController.login);
+
+router.use(checkAuth);
+
+router.post("/getPersonalProducts", UserController.getUserPersonalProducts);
+
+router.post("/userOrders", UserController.getUserOrders);
+
+router.post("/userOrdersByDate", UserController.getUserOrdersByDate);
+
+router.post("/getUserSoldItems", UserController.getUserSoldItems);
 
 module.exports = router;

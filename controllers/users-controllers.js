@@ -15,8 +15,11 @@ const transporter = nodemailer.createTransport(
   })
 );
 
+// MODELS IMPORT FOR USE
 const HttpError = require("../models/http-errors");
 const User = require("../models/user");
+const Order = require("../models/order");
+const Product = require("../models/product");
 
 // GET ALL USERS
 const getUsers = async (req, res, next) => {
@@ -34,6 +37,7 @@ const getUsers = async (req, res, next) => {
   res.json({ users: users.map((user) => user.toObject({ getters: true })) });
 };
 
+// need to fix email sign up when email contains . or other signs
 //SIGNUP
 const signup = async (req, res, next) => {
   const errors = validationResult(req);
@@ -176,7 +180,7 @@ const resetPassword = async (req, res, next) => {
       subject: "Password reset",
       html: `
           <p>Hey!!! one more set to reset your password :)</p>
-          <p>Just Click this <a href="https://storelux.web.app/resetPassword/${existingUser.resetToken}">link</a> to set a new password</p>
+          <p>Just Click this <a href="http://localhost:3000/resetPassword/${existingUser.resetToken}">link</a> to set a new password</p>
       `,
     });
   } catch (err) {
@@ -321,6 +325,39 @@ const login = async (req, res, next) => {
   });
 };
 
+// GET USERS PERSONAL PRODUCTS
+const getUserPersonalProducts = async (req, res, next) => {
+  const { userId } = req.body;
+
+  let userProducts;
+  let userWithProducts;
+  try {
+    userWithProducts = await User.findById(userId).populate({
+      path: "products",
+      match: { active: true },
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find a user.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!userWithProducts) {
+    const error = new HttpError(
+      "Could not find a user for the provided id.",
+      404
+    );
+    return next(error);
+  }
+  res.json({
+    items: userWithProducts.products.map((product) =>
+      product.toObject({ getters: true })
+    ),
+  });
+};
+
 //GET USER BY ID
 const getUserById = async (req, res, next) => {
   const userId = req.params.uid;
@@ -406,10 +443,152 @@ const updateUserInfo = async (req, res, next) => {
   res.status(200).json({ user: user.toObject({ getters: true }) });
 };
 
+// GET USER ORDERS
+const getUserOrders = async (req, res, next) => {
+  const { userId } = req.body;
+  let user;
+  let orders;
+
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find user.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError(
+      "Could not find a user for the provided id.",
+      404
+    );
+    return next(error);
+  }
+
+  try {
+    orders = await Order.find({ creator: userId });
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not find user.",
+      500
+    );
+    return next(error);
+  }
+  if (!orders) {
+    const error = new HttpError("Could not find orders for this user.", 404);
+    return next(error);
+  }
+  res.json({
+    orders: orders.map((order) => order.toObject({ getters: true })),
+  });
+};
+
+// GET USER ORDERS BY DATE
+const getUserOrdersByDate = async (req, res, next) => {
+  const { userId, fromDate, toDate } = req.body;
+
+  const dateFrom = new Date(fromDate);
+  const dateTo = new Date(toDate);
+  const newDate = new Date(dateTo.setDate(dateTo.getDate() + 1));
+
+  let orders;
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError("Could not find user for provided id", 500);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  try {
+    if (
+      dateFrom.getDate() === dateTo.getDate() &&
+      dateFrom.getMonth() === dateTo.getMonth() &&
+      dateFrom.getFullYear() === dateTo.getFullYear()
+    ) {
+      orders = await Order.find({ creator: userId });
+    } else {
+      orders = await Order.find({
+        $and: [
+          { creator: userId },
+          { createdAt: { $gte: fromDate, $lte: newDate } },
+        ],
+      });
+    }
+  } catch (err) {
+    const error = new HttpError("Could not fine orders", 500);
+    return next(error);
+  }
+
+  if (!orders) {
+    return next(new HttpError("Could not find orders.", 403));
+  }
+
+  res.json({
+    orders: orders.map((order) => order.toObject({ getters: true })),
+  });
+};
+
+const getUserSoldItems = async (req, res, next) => {
+  const { userId } = req.body;
+
+  let products;
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError("Could not find user for provided id", 500);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  try {
+    products = await Product.find({ creator: userId });
+  } catch (e) {
+    const error = new HttpError(
+      "Could not find products for the current user.",
+      403
+    );
+    return next(error);
+  }
+  if (!products) {
+    const error = new HttpError(
+      "Could not find products for the current user.",
+      424
+    );
+    return next(error);
+  }
+  // console.log(products);
+  const soldItemInfo = products.map((product) => {
+    return {
+      title: product.title,
+      soldUnits: product.sold_units,
+    };
+  });
+  res.json({
+    items: soldItemInfo,
+  });
+};
+
 exports.getUsers = getUsers;
+exports.getUserPersonalProducts = getUserPersonalProducts;
 exports.getUserById = getUserById;
 exports.updateUserInfo = updateUserInfo;
 exports.signup = signup;
 exports.login = login;
 exports.resetPassword = resetPassword;
 exports.updatePassword = updatePassword;
+exports.getUserOrders = getUserOrders;
+exports.getUserOrdersByDate = getUserOrdersByDate;
+exports.getUserSoldItems = getUserSoldItems;
