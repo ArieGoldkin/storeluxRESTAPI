@@ -39,9 +39,24 @@ const addProductToCart = async (req, res, next) => {
     return next(error);
   }
 
+  let usersProduct = false;
   let product;
   try {
     product = await Product.findById(productId);
+
+    for(const key in user.products){
+      if(user.products[key] == product.id){
+        usersProduct = true;
+      }
+    }
+
+    if(usersProduct){
+      const error = new HttpError(
+        "This product is users product, Please check your products inventory.",
+      422
+      );
+      return next(error);
+    }
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not find product.",
@@ -49,6 +64,9 @@ const addProductToCart = async (req, res, next) => {
     );
     return next(error);
   }
+
+
+ 
 
   let cartId = user.cartId;
   let createdCart;
@@ -74,10 +92,8 @@ const addProductToCart = async (req, res, next) => {
   } else {
     try {
       cart = await Cart.findById(cartId);
-      console.log(cart);
       let id = productId;
       let itemIndex = cart.products.findIndex((p) => p.productId == id);
-      console.log(itemIndex);
       if (itemIndex > -1) {
         //product exists in the cart, update the quantity
         let productItem = cart.products[itemIndex];
@@ -109,7 +125,6 @@ const addProductToCart = async (req, res, next) => {
           .status(201)
           .json({ items: cart.products.toObject({ getters: true }) });
       } else {
-        console.log(cart.products[itemIndex]);
         return res.status(201).json({
           items: cart.products.toObject({ getters: true }),
         });
@@ -256,11 +271,11 @@ const deleteProductsFromCart = async (req, res, next) => {
     return next(error);
   }
 
-  for (var key in products) {
+  for (let key in products) {
     if (products.hasOwnProperty(key)) {
       product = products[key];
       // console.log(product);
-      for (var index in userCart.products) {
+      for (let index in userCart.products) {
         if (userCart.products.hasOwnProperty(index)) {
           userProduct = userCart.products[index];
           if (userProduct.id === product.id) {
@@ -293,6 +308,7 @@ const deleteProductsFromCart = async (req, res, next) => {
   });
 };
 
+// DELETE PRODUCT FROM CART
 const deleteProductFromCart = async (req, res, next) => {
   const productId = req.params.pcid;
   const userId = req.userData.userId;
@@ -337,8 +353,8 @@ const deleteProductFromCart = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({
-    message: "Deleted product.",
+  res.json({
+    cart: userCart.products.map((item) => item.toObject({ getters: true })),
   });
 };
 
