@@ -8,6 +8,7 @@ const productSchema = new Schema(
     category: { type: String, required: true },
     price: { type: Number, required: true },
     units: { type: Number, required: true },
+    sold_units: { type: Number },
     description: { type: String, required: true },
 
     // connect the product the the creator user id
