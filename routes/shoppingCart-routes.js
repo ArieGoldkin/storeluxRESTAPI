@@ -1,8 +1,8 @@
 const express = require("express");
-const { check } = require("express-validator");
+// const { check } = require("express-validator");
 
 const shoppingCartControllers = require("../controllers/shoppingCart-controllers");
-const fileUpload = require("../middleware/file-upload");
+// const fileUpload = require("../middleware/file-upload");
 const checkAuth = require("../middleware/check-auth");
 
 const router = express.Router();
