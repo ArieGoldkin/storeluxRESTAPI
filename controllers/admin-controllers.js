@@ -166,6 +166,9 @@ const getAllProducts = async (req, res, next) => {
 const getOrdersByDate = async (req, res, next) => {
   const { adminId, fromDate, toDate } = req.body;
 
+  const dateTo = new Date(toDate);
+
+  const newDate = new Date(dateTo.setDate(dateTo.getDate() + 1));
   let orders;
   let adminUser;
   let isAdmin;
@@ -193,7 +196,7 @@ const getOrdersByDate = async (req, res, next) => {
   if (isAdmin) {
     try {
       orders = await Order.find({
-        createdAt: { $gte: fromDate, $lte: toDate },
+        createdAt: { $gte: fromDate, $lte: newDate },
       });
     } catch (err) {
       const error = new HttpError("Could not fine orders", 500);
