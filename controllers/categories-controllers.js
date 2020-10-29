@@ -16,11 +16,14 @@ const getCategories = async (req, res, next) => {
   if (!categories) {
     return next(new HttpError("Could not find categories.", 404));
   }
-  res.json({
-    categories: categories.map((category) =>
-      category.toObject({ getters: true })
-    ),
+
+  const categoryName = categories.map((category) => {
+    return {
+      name: category.name,
+      id: category.id,
+    };
   });
+  res.json({ categories: categoryName });
 };
 
 exports.getCategories = getCategories;
