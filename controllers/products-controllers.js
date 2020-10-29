@@ -58,6 +58,37 @@ const findProductsByTitle = async (req, res, next) => {
   });
 };
 
+// FIND PRODUCTS BY CATEGORY
+const findProductsByCategory = async (req, res, next) => {
+  const { category } = req.body;
+
+  if (!category || category === "Select Category") {
+    const error = new HttpError(
+      "Please select a category before searching products.",
+      400
+    );
+    return next(error);
+  }
+
+  let products;
+  try {
+    products = await Product.find({
+      $and: [{ category: category }, { active: true }],
+    });
+  } catch (err) {
+    const error = new HttpError("Could not fine products", 500);
+    return next(error);
+  }
+
+  if (!products) {
+    return res.json({ products });
+  }
+
+  res.json({
+    products: products.map((product) => product.toObject({ getters: true })),
+  });
+};
+
 // GET PRODUCT BY ID
 const getProductById = async (req, res, next) => {
   const productId = req.params.pid;
@@ -141,6 +172,7 @@ const createProduct = async (req, res, next) => {
     category,
     price,
     units,
+    sold_units: 0,
     description,
     creator: req.userData.userId,
     image: req.file.path,
@@ -298,30 +330,6 @@ const deleteProduct = async (req, res, next) => {
     );
     return next(error);
   }
-  // try {
-  //   const sess = await mongoose.startSession();
-  //   sess.startTransaction();
-  //   await product.remove({
-  //     session: sess,
-  //   });
-  //   product.creator.products.pull(product); // pulls the product id from the products user array
-  //   await product.creator.save({
-  //     session: sess,
-  //   });
-  //   await sess.commitTransaction();
-  // } catch (err) {
-  //   const error = new HttpError(
-  //     "Something went wrong, could not delete product.",
-  //     500
-  //   );
-  //   return next(error);
-  // }
-
-  // deleting the image from data base when deleting a product
-  // fs.unlink(imagePath, (err) => {
-  //   console.log(err);
-  // });
-
   res.status(200).json({
     message: "Deleted product.",
   });
@@ -329,6 +337,7 @@ const deleteProduct = async (req, res, next) => {
 
 exports.getProducts = getProducts;
 exports.findProductsByTitle = findProductsByTitle;
+exports.findProductsByCategory = findProductsByCategory;
 exports.getProductById = getProductById;
 exports.getProductsByUserId = getProductsByUserId;
 exports.createProduct = createProduct;
