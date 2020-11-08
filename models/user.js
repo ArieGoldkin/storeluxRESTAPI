@@ -21,6 +21,9 @@ const userSchema = new Schema(
       { type: mongoose.Types.ObjectId, required: true, ref: "Product" },
     ],
     orders: [{ type: mongoose.Types.ObjectId, required: true, ref: "Order" }],
+    messages: [
+      { type: mongoose.Types.ObjectId, required: true, ref: "Message" },
+    ],
     active: {
       type: Boolean,
       default: true,
