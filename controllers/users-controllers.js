@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
@@ -20,6 +21,7 @@ const HttpError = require("../models/http-errors");
 const User = require("../models/user");
 const Order = require("../models/order");
 const Product = require("../models/product");
+const Message = require("../models/message");
 
 // GET ALL USERS
 const getUsers = async (req, res, next) => {
@@ -50,7 +52,6 @@ const signup = async (req, res, next) => {
   }
 
   const { firstName, lastName, email, password } = req.body;
-
   let existingUser;
   try {
     existingUser = await User.findOne({ email });
@@ -259,7 +260,6 @@ const updatePassword = async (req, res, next) => {
 //LOGIN
 const login = async (req, res, next) => {
   const { email, password } = req.body;
-
   let existingUser;
   let admin;
 
@@ -468,7 +468,7 @@ const getUserOrders = async (req, res, next) => {
   }
 
   try {
-    orders = await Order.find({ creator: userId });
+    orders = await Order.find({ creator: userId }).sort({ createdAt: -1 });
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not find user.",
@@ -520,7 +520,7 @@ const getUserOrdersByDate = async (req, res, next) => {
           { creator: userId },
           { createdAt: { $gte: fromDate, $lte: newDate } },
         ],
-      });
+      }).sort({ createdAt: -1 });
     }
   } catch (err) {
     const error = new HttpError("Could not fine orders", 500);
@@ -555,7 +555,7 @@ const getUserSoldItems = async (req, res, next) => {
 
   try {
     products = await Product.find({ creator: userId });
-  } catch (e) {
+  } catch (err) {
     const error = new HttpError(
       "Could not find products for the current user.",
       403
@@ -569,7 +569,7 @@ const getUserSoldItems = async (req, res, next) => {
     );
     return next(error);
   }
-  // console.log(products);
+
   const soldItemInfo = products.map((product) => {
     return {
       title: product.title,
@@ -579,6 +579,109 @@ const getUserSoldItems = async (req, res, next) => {
   res.json({
     items: soldItemInfo,
   });
+};
+
+const getUserMessages = async (req, res, next) => {
+  const { userId } = req.body;
+  let userWithMessages;
+
+  try {
+    userWithMessages = await User.findById(userId).populate({
+      path: "messages",
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching messages failed, please try again later.",
+      500
+    );
+    return next(error);
+  }
+
+  if (!userWithMessages || userWithMessages.length === 0) {
+    res.json({ messages: "No system messages for current user" });
+  }
+
+  res.json({
+    messages: userWithMessages.messages.map((message) =>
+      message.toObject({ getters: true })
+    ),
+  });
+};
+
+const userSeenMessage = async (req, res, next) => {
+  const { userId, messageId } = req.body;
+
+  let user;
+  let seenMessage;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    const error = new HttpError("Could not find user for provided id", 500);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user for provided id", 404);
+    return next(error);
+  }
+
+  try {
+    seenMessage = await Message.findById(messageId);
+  } catch (err) {
+    const error = new HttpError(
+      "Could not update seen messages for provided id",
+      500
+    );
+    return next(error);
+  }
+
+  seenMessage.active = false;
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await seenMessage.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not update message.",
+      500
+    );
+    return next(error);
+  }
+  res.json({ message: seenMessage.toObject({ getters: true }) });
+};
+
+const deleteUserMessage = async (req, res, next) => {
+  const messageId = req.params.mid;
+  let message;
+
+  try {
+    message = await Message.findById(messageId).populate("userId");
+  } catch (err) {
+    const error = new HttpError("Could not find message for provided id", 500);
+    return next(error);
+  }
+
+  if (!message) {
+    const error = new HttpError("Could not find message for provided id", 404);
+    return next(error);
+  }
+
+  try {
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await message.remove({ session: sess });
+    message.userId.messages.pull(message);
+    await message.userId.save({ session: sess });
+    await sess.commitTransaction();
+  } catch (err) {
+    const error = new HttpError(
+      "Something went wrong, could not delete message.",
+      500
+    );
+    return next(error);
+  }
+  res.status(200).json({ message: "message deleted." });
 };
 
 exports.getUsers = getUsers;
@@ -592,3 +695,6 @@ exports.updatePassword = updatePassword;
 exports.getUserOrders = getUserOrders;
 exports.getUserOrdersByDate = getUserOrdersByDate;
 exports.getUserSoldItems = getUserSoldItems;
+exports.getUserMessages = getUserMessages;
+exports.userSeenMessage = userSeenMessage;
+exports.deleteUserMessage = deleteUserMessage;
