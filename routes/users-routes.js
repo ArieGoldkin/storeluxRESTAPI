@@ -41,7 +41,11 @@ router.patch(
   UserController.updateUserInfo
 );
 
-router.post("/login", UserController.login);
+router.post(
+  "/login",
+  check("email").normalizeEmail().isEmail(),
+  UserController.login
+);
 
 router.use(checkAuth);
 
@@ -52,5 +56,11 @@ router.post("/userOrders", UserController.getUserOrders);
 router.post("/userOrdersByDate", UserController.getUserOrdersByDate);
 
 router.post("/getUserSoldItems", UserController.getUserSoldItems);
+
+router.post("/getUserMessages", UserController.getUserMessages);
+
+router.post("/userMessageSeen", UserController.userSeenMessage);
+
+router.delete("/deleteMessage/:mid", UserController.deleteUserMessage);
 
 module.exports = router;
