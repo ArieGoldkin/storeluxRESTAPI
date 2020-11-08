@@ -11,6 +11,8 @@ router.get("/", productsControllers.getProducts);
 
 router.post("/searchByTitle", productsControllers.findProductsByTitle);
 
+router.post("/searchByCategory", productsControllers.findProductsByCategory);
+
 router.get("/:pid", productsControllers.getProductById);
 
 router.get("/user/:uid", productsControllers.getProductsByUserId);
