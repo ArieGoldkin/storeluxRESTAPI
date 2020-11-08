@@ -4,7 +4,6 @@ const mongoose = require("mongoose");
 const HttpError = require("../models/http-errors");
 const Product = require("../models/product");
 const User = require("../models/user");
-// const Cart = require("../models/cart");
 const Message = require("../models/message");
 const Order = require("../models/order");
 
@@ -42,6 +41,7 @@ const addNewOrder = async (req, res, next) => {
 
   let user;
   let product;
+  let seller;
 
   try {
     user = await User.findById(userId);
@@ -77,8 +77,7 @@ const addNewOrder = async (req, res, next) => {
         product = await Product.findById(itemId);
         product.units -= item.quantity;
         product.sold_units += item.quantity;
-        
-        //need to create new message for user when items are below 5 in quantity
+
         try {
           await product.save();
         } catch (err) {
@@ -90,12 +89,53 @@ const addNewOrder = async (req, res, next) => {
         }
       } catch (err) {
         const error = new HttpError(
-          "Could not find product, please try again.",
+          "Something went wrong could not update product. please try again later.",
           500
         );
         return next(error);
       }
+
       createdOrder.products.push(item);
+    }
+    if (product.units <= 5) {
+      // const usersId = product.creator;
+      try {
+        seller = await User.findById(product.creator);
+      } catch (err) {
+        const error = new HttpError(
+          "Could not find user for the provided product, please try again.",
+          403
+        );
+        return next(error);
+      }
+
+      if (!seller) {
+        const error = new HttpError("Could not find user.", 404);
+        return next(error);
+      }
+
+      const systemErrorMessage = new Message({
+        systemNote: "Inventory",
+        title: "Low quantity level",
+        content: `Your product with id: ${product._id}, with title of ${product.title} has a low quantity of ${product.units}, please add more quantities or remove product from inventory.`,
+        productId: product.id,
+        userId: product.creator,
+      });
+
+      try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
+        await systemErrorMessage.save({ session: sess });
+        seller.messages.push(systemErrorMessage);
+        await seller.save({ session: sess });
+        await sess.commitTransaction();
+      } catch (err) {
+        const error = new HttpError(
+          "Creating system message failed, please try again.",
+          500
+        );
+        return next(error);
+      }
     }
   }
 

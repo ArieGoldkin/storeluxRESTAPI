@@ -69,7 +69,7 @@ const getOrders = async (req, res, next) => {
 
   if (isAdmin) {
     try {
-      orders = await Order.find({});
+      orders = await Order.find({}).sort({ createdAt: -1 });
     } catch (e) {
       const error = new HttpError("Could not fine orders", 500);
       return next(error);
@@ -197,7 +197,7 @@ const getOrdersByDate = async (req, res, next) => {
     try {
       orders = await Order.find({
         createdAt: { $gte: fromDate, $lte: newDate },
-      });
+      }).sort({ createdAt: -1 });
     } catch (err) {
       const error = new HttpError("Could not fine orders", 500);
       return next(error);
@@ -263,7 +263,9 @@ const getOrdersByUserName = async (req, res, next) => {
         oneItem = user[key];
         let userId = oneItem._id;
         try {
-          orders = await Order.find({ creator: userId });
+          orders = await Order.find({ creator: userId }).sort({
+            createdAt: -1,
+          });
           newOrdersArray.push(...orders);
         } catch (err) {
           const error = new HttpError("Could not fine orders", 500);
@@ -272,7 +274,7 @@ const getOrdersByUserName = async (req, res, next) => {
       }
     } else {
       try {
-        orders = await Order.find({});
+        orders = await Order.find({}).sort({ createdAt: -1 });
         newOrdersArray.push(...orders);
       } catch (e) {
         const error = new HttpError("Could not fine orders", 500);
