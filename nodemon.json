@@ -1,9 +1,0 @@
-{
-  "env": {
-    "DB_USER": "ArieGold",
-    "DB_PASSWORD": "ArieGold5378581",
-    "DB_NAME": "storeluxDB",
-    "MAIL_API_KEY": "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",
-    "JWT_KEY": "supersecret_string_gold_dont_share"
-  }
-}
